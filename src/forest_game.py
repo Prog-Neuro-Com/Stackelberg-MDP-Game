@@ -3,7 +3,6 @@ from typing import Tuple, List, Dict, Optional, Set
 from dataclasses import dataclass
 from enum import Enum
 import matplotlib.pyplot as plt
-import networkx as nx
 
 
 class Action(Enum):
@@ -24,7 +23,7 @@ class Cell:
         return f"Cell(W:{self.wood}, F:{self.fruit})"
 
 
-@dataclass
+@dataclass(frozen=True)
 class GameState:
     """Complete state of the forest collection game"""
     leader_pos: Tuple[int, int]
@@ -36,6 +35,22 @@ class GameState:
 
     def is_terminal(self) -> bool:
         return self.leader_steps_left <= 0 or self.follower_steps_left <= 0
+
+    def to_key(self) -> Tuple:
+        return (self.leader_pos, self.follower_pos,
+                self.leader_steps_left, self.follower_steps_left,
+                self.leader_total_wood, self.follower_total_fruit)
+
+    @classmethod
+    def from_key(cls, key: Tuple):
+        return cls(
+            leader_pos=key[0],
+            follower_pos=key[1],
+            leader_steps_left=key[2],
+            follower_steps_left=key[3],
+            leader_total_wood=key[4],
+            follower_total_fruit=key[5]
+        )
 
 
 class ForestCollectionMDP:
@@ -91,7 +106,6 @@ class ForestCollectionMDP:
         return forest
 
     def get_initial_state(self) -> GameState:
-        """Get the initial game state"""
         return GameState(
             leader_pos=self.leader_start,
             follower_pos=self.follower_start,
@@ -100,7 +114,6 @@ class ForestCollectionMDP:
         )
 
     def get_valid_actions(self, pos: Tuple[int, int]) -> List[Action]:
-        """Get valid actions from current position"""
         x, y = pos
         valid_actions = [Action.STAY]
 
@@ -126,7 +139,6 @@ class ForestCollectionMDP:
     def transition(self, state: GameState,
                    leader_action: Action,
                    follower_action: Action) -> GameState:
-        """Execute one step of the game"""
         if state.is_terminal():
             return state
 
@@ -213,6 +225,22 @@ class StackelbergForestSolver:
         self.mdp = mdp
         self.state_values = {}
         self.policies = {}
+        # Cache for memoization
+        self.follower_response_cache = {}
+
+    def _policy_to_cache_key(self, leader_policy: Dict[GameState, Action]) -> Tuple:
+        """Convert leader policy to a hashable cache key"""
+        if not leader_policy:
+            return tuple()
+
+        # Convert policy to sorted list of (state_key, action) tuples
+        policy_items = []
+        for state, action in leader_policy.items():
+            policy_items.append((state.to_key(), action.value))
+
+        # Sort by state key to ensure consistent ordering
+        policy_items.sort(key=lambda x: x[0])
+        return tuple(policy_items)
 
     def solve_follower_best_response(self,
                                      leader_policy: Dict,
@@ -221,12 +249,18 @@ class StackelbergForestSolver:
                                      max_depth: int = 20) -> Tuple[float, Action]:
         """
         Solve follower's best response given leader's policy
-        Uses backward induction
+        Uses backward induction with memoization
         """
         if state.is_terminal() or depth >= max_depth:
             return self.mdp.get_follower_reward(state), Action.STAY
 
-        # Get leader's action from policy
+        # Check cache
+        policy_key = self._policy_to_cache_key(leader_policy)
+        cache_key = (state.to_key(), depth, policy_key)
+        if cache_key in self.follower_response_cache:
+            return self.follower_response_cache[cache_key]
+
+        # Get leader's action from policy (use state as key now that it's hashable)
         leader_action = leader_policy.get(state, Action.STAY)
 
         best_value = float('-inf')
@@ -249,14 +283,71 @@ class StackelbergForestSolver:
                 best_value = total_value
                 best_action = f_action
 
+        # Cache result
+        policy_key = self._policy_to_cache_key(leader_policy)
+        cache_key = (state.to_key(), depth, policy_key)
+        self.follower_response_cache[cache_key] = (best_value, best_action)
         return best_value, best_action
 
+    def create_simple_leader_policy(self, target_cells: List[Tuple[int, int]]) -> Dict[GameState, Action]:
+        """
+        Create a simple leader policy that visits target cells in order
+        """
+        policy = {}
+
+        def get_next_action(current_pos: Tuple[int, int], target_pos: Tuple[int, int]) -> Action:
+            """Get action to move towards target position"""
+            dx = target_pos[0] - current_pos[0]
+            dy = target_pos[1] - current_pos[1]
+
+            if abs(dx) > abs(dy):
+                return Action.RIGHT if dx > 0 else Action.LEFT
+            elif abs(dy) > 0:
+                return Action.UP if dy > 0 else Action.DOWN
+            else:
+                return Action.STAY
+
+        # This is a simplified policy - in practice you'd want more sophisticated targeting
+        # For now, let's create a policy that moves towards high-wood cells
+        high_wood_cells = []
+        for x in range(self.mdp.width):
+            for y in range(self.mdp.height):
+                if self.mdp.forest_map[x, y, 0] > 5:  # High wood threshold
+                    high_wood_cells.append((x, y))
+
+        if not high_wood_cells:
+            high_wood_cells = [(self.mdp.width - 1, self.mdp.height - 1)]  # Default target
+
+        # Simple policy: always move towards the first high-wood cell
+        target = high_wood_cells[0]
+
+        # Generate some sample states and policies (this is simplified)
+        for steps_left in range(1, self.mdp.max_steps_leader + 1):
+            for x in range(self.mdp.width):
+                for y in range(self.mdp.height):
+                    for fx in range(self.mdp.width):
+                        for fy in range(self.mdp.height):
+                            state = GameState(
+                                leader_pos=(x, y),
+                                follower_pos=(fx, fy),
+                                leader_steps_left=steps_left,
+                                follower_steps_left=steps_left
+                            )
+                            action = get_next_action((x, y), target)
+                            policy[state] = action
+
+        return policy
+
     def evaluate_strategy_profile(self,
-                                  leader_policy: Dict,
+                                  leader_policy: Dict[GameState, Action],
                                   max_depth: int = 20) -> Tuple[float, float]:
         """
         Evaluate a strategy profile and return (leader_payoff, follower_payoff)
         """
+        if not leader_policy:
+            # Create a default policy if none provided
+            leader_policy = self.create_simple_leader_policy([])
+
         initial_state = self.mdp.get_initial_state()
 
         # Simulate the game
@@ -323,14 +414,39 @@ if __name__ == "__main__":
     # Visualize forest
     game.visualize_forest()
 
-    # Initialize solver
+    # Initialize solvers
     solver = StackelbergForestSolver(game)
 
-    # Test with a simple leader policy (go right then up)
-    simple_leader_policy = {}
-    test_state = initial_state
-
+    # Test with a simple leader policy
     print(f"\nTesting simple leader policy...")
-    leader_payoff, follower_payoff = solver.evaluate_strategy_profile(simple_leader_policy)
+
+    # Create a more sophisticated leader policy
+    leader_policy = solver.create_simple_leader_policy([])
+
+    leader_payoff, follower_payoff = solver.evaluate_strategy_profile(leader_policy)
     print(f"Leader payoff: {leader_payoff}")
     print(f"Follower payoff: {follower_payoff}")
+
+    # Test different scenarios
+    print(f"\nTesting different starting positions...")
+
+    # Test with different starting positions
+    game2 = ForestCollectionMDP(
+        grid_size=(3, 3),
+        forest_map=forest_map,
+        leader_start=(0, 0),
+        follower_start=(0, 0),  # Same starting position
+        max_steps_leader=3,
+        max_steps_follower=3
+    )
+
+    solver2 = StackelbergForestSolver(game2)
+    leader_policy2 = solver2.create_simple_leader_policy([])
+    leader_payoff2, follower_payoff2 = solver2.evaluate_strategy_profile(leader_policy2)
+    print(f"Same start - Leader payoff: {leader_payoff2}, Follower payoff: {follower_payoff2}")
+
+    print(f"\nForest map:")
+    print("Wood (Leader resource):")
+    print(forest_map[:, :, 0])
+    print("Fruit (Follower resource):")
+    print(forest_map[:, :, 1])
