@@ -15,7 +15,6 @@ class Action(Enum):
 
 @dataclass
 class Cell:
-    """Represents a cell in the forest grid"""
     wood: int
     fruit: int
 
@@ -25,7 +24,6 @@ class Cell:
 
 @dataclass(frozen=True)
 class GameState:
-    """Complete state of the forest collection game with turn-based play"""
     leader_pos: Tuple[int, int]
     follower_pos: Tuple[int, int]
     leader_steps_left: int
@@ -39,15 +37,12 @@ class GameState:
         return self.leader_steps_left <= 0 and self.follower_steps_left <= 0
 
     def is_leader_turn(self) -> bool:
-        """Check if it's currently the leader's turn"""
         return self.turn is True
 
     def is_follower_turn(self) -> bool:
-        """Check if it's currently the follower's turn"""
         return self.turn is False
 
     def get_current_player_pos(self) -> Tuple[int, int]:
-        """Get position of the player whose turn it is"""
         if self.is_leader_turn():
             return self.leader_pos
         elif self.is_follower_turn():
@@ -56,7 +51,6 @@ class GameState:
             raise ValueError("Cannot determine current player position in simultaneous game")
 
     def get_current_player_steps_left(self) -> int:
-        """Get steps left for the player whose turn it is"""
         if self.is_leader_turn():
             return self.leader_steps_left
         elif self.is_follower_turn():
@@ -65,7 +59,6 @@ class GameState:
             raise ValueError("Cannot determine current player steps in simultaneous game")
 
     def to_key(self) -> Tuple:
-        """Convert state to a hashable key for use in dictionaries"""
         return (self.leader_pos, self.follower_pos,
                 self.leader_steps_left, self.follower_steps_left,
                 self.leader_total_wood, self.follower_total_fruit, self.turn)
@@ -109,7 +102,6 @@ class ForestCollectionMDP:
         self.max_steps_follower = max_steps_follower
         self.leader_starts_first = leader_starts_first
 
-        # Initialize forest map
         if forest_map is not None:
             assert forest_map.shape == (self.width, self.height,
                                         2), "Forest map should be (width, height, 2) for wood and fruit"
@@ -151,7 +143,6 @@ class ForestCollectionMDP:
         return forest
 
     def get_initial_state(self, leader_starts: Optional[bool] = None) -> GameState:
-        """Get the initial game state with proper turn assignment"""
         if leader_starts is None:
             leader_starts = self.leader_starts_first
 
@@ -164,7 +155,6 @@ class ForestCollectionMDP:
         )
 
     def get_valid_actions(self, pos: Tuple[int, int]) -> List[Action]:
-        """Get valid actions from current position"""
         x, y = pos
         valid_actions = [Action.STAY]
 
@@ -176,19 +166,16 @@ class ForestCollectionMDP:
         return valid_actions
 
     def apply_action(self, pos: Tuple[int, int], action: Action) -> Tuple[int, int]:
-        """Apply action to position and return new position"""
         dx, dy = action.value
         new_x = max(0, min(self.width - 1, pos[0] + dx))
         new_y = max(0, min(self.height - 1, pos[1] + dy))
-        return (new_x, new_y)
+        return new_x, new_y
 
     def get_cell_rewards(self, pos: Tuple[int, int]) -> Tuple[int, int]:
-        """Get wood and fruit at given position"""
         x, y = pos
         return int(self.forest_map[x, y, 0]), int(self.forest_map[x, y, 1])
 
     def transition(self, state: GameState, action: Action) -> GameState:
-        """Execute one step of the sequential game"""
         if state.is_terminal():
             return state
 
@@ -254,7 +241,6 @@ class ForestCollectionMDP:
     def transition_simultaneous(self, state: GameState,
                                 leader_action: Action,
                                 follower_action: Action) -> GameState:
-        """Execute simultaneous moves (for compatibility with original version)"""
         if state.is_terminal():
             return state
 

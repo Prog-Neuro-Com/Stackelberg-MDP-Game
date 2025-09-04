@@ -21,7 +21,6 @@ from src.forest_game import ForestCollectionMDP, GameState, Action
 
 @dataclass
 class GameNode:
-    """Represents a node in the game tree"""
     state: GameState
     depth: int
     is_leader_turn: bool
@@ -313,7 +312,7 @@ class SequentialGameTreeSolver:
                 child_node = GameNode(
                     state=child_state,
                     depth=node.depth + 1,
-                    is_leader_turn=False,  # Switch to follower's turn
+                    is_leader_turn=False,
                     parent=node
                 )
                 node.children.append(child_node)
@@ -346,7 +345,7 @@ class SequentialGameTreeSolver:
                 child_node = GameNode(
                     state=child_state,
                     depth=node.depth + 1,
-                    is_leader_turn=True,  # Switch to leader's turn
+                    is_leader_turn=True,
                     parent=node
                 )
                 node.children.append(child_node)
@@ -433,7 +432,6 @@ class SequentialGameTreeSolver:
         return threat_prob
 
     def _transition_with_turn_switch(self, state: GameState, action: Action) -> GameState:
-        """Apply action and switch turns"""
 
         if state.turn:  # Leader's turn
             new_leader_pos = self.mdp.apply_action(state.leader_pos, action)
