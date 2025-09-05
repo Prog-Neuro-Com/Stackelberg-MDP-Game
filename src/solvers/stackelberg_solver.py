@@ -18,7 +18,6 @@ from ..forest_game import ForestCollectionMDP, GameState, Action
 
 @dataclass
 class StrategyProfile:
-    """Represents a complete strategy profile for both players"""
     leader_policy: Dict[GameState, Action]
     follower_policy: Dict[GameState, Action]
     leader_payoff: float
@@ -32,8 +31,8 @@ class ThreatType(Enum):
     """Different types of threats the leader can make"""
     NO_THREAT = "no_threat"
     FRUIT_AVOIDANCE = "fruit_avoidance"  # Go to low-fruit cells
-    BLOCKING = "blocking"  # Block follower's path
-    PUNISHMENT = "punishment"  # Explicit punishment strategy
+    # BLOCKING = "blocking"  # Block follower's path
+    # PUNISHMENT = "punishment"  # Explicit punishment strategy
 
 
 class StackelbergSolver:
