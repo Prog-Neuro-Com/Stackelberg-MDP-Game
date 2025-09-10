@@ -111,7 +111,7 @@ class ForestCollectionMDP:
 
     def _generate_random_forest(self) -> np.ndarray:
         """Generate a random forest with wood and fruit distributions"""
-        np.random.seed(42)  # For reproducibility
+        np.random.seed(20)  # For reproducibility
         forest = np.zeros((self.width, self.height, 2), dtype=int)
 
         # Generate wood (leader's resource)
@@ -164,6 +164,15 @@ class ForestCollectionMDP:
         if y < self.height - 1: valid_actions.append(Action.UP)
 
         return valid_actions
+
+    def is_valid_action(self, state: GameState, action: Action) -> bool:
+        """Check if an action is valid in the given state"""
+        if state.is_terminal():
+            return False
+        
+        current_pos = state.get_current_player_pos()
+        valid_actions = self.get_valid_actions(current_pos)
+        return action in valid_actions
 
     def apply_action(self, pos: Tuple[int, int], action: Action) -> Tuple[int, int]:
         dx, dy = action.value
