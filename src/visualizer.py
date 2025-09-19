@@ -114,3 +114,61 @@ def visualize_solution(actions: List[Action], initial_state: GameState, mdp: For
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.1)  # Make room for the info text
     plt.show()
+
+
+def visualize_epf(epfs: list):
+    """
+    Visualize the Efficient Pareto Frontier (EPF) points
+    
+    Args:
+        epfs: List of tuples where each tuple is (follower_payoff, leader_payoff)
+    """
+    if not epfs:
+        print("No EPF points to visualize")
+        return
+    
+    # Extract follower and leader payoffs
+    follower_payoffs = [point[0] for point in epfs]
+    leader_payoffs = [point[1] for point in epfs]
+    
+    # Create the plot
+    plt.figure(figsize=(10, 8))
+    
+    # Plot EPF points
+    plt.scatter(follower_payoffs, leader_payoffs, c='red', s=100, alpha=0.7, edgecolors='black', linewidth=1)
+    
+    # Sort points by follower payoff to draw connecting lines
+    sorted_points = sorted(epfs, key=lambda x: x[0])
+    sorted_follower = [point[0] for point in sorted_points]
+    sorted_leader = [point[1] for point in sorted_points]
+    
+    # Connect points to show the frontier
+    plt.plot(sorted_follower, sorted_leader, 'b-', alpha=0.5, linewidth=2, label='Pareto Frontier')
+    
+    # Add labels for each point
+    for i, (f_payoff, l_payoff) in enumerate(epfs):
+        plt.annotate(f'({f_payoff:.2f}, {l_payoff:.2f})', 
+                    (f_payoff, l_payoff), 
+                    xytext=(5, 5), textcoords='offset points', 
+                    fontsize=9, alpha=0.8)
+    
+    # Formatting
+    plt.xlabel('Follower Payoff')
+    plt.ylabel('Leader Payoff')
+    plt.title('Efficient Pareto Frontier (EPF)')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    
+    # Add some padding around the points
+    if len(follower_payoffs) > 1:
+        x_margin = (max(follower_payoffs) - min(follower_payoffs)) * 0.1
+        y_margin = (max(leader_payoffs) - min(leader_payoffs)) * 0.1
+        plt.xlim(min(follower_payoffs) - x_margin, max(follower_payoffs) + x_margin)
+        plt.ylim(min(leader_payoffs) - y_margin, max(leader_payoffs) + y_margin)
+    
+    plt.tight_layout()
+    plt.show()
+
+
+
+
