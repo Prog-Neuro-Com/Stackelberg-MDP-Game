@@ -206,7 +206,7 @@ class ForestCollectionMDP:
                 )
 
             new_leader_pos = self.apply_action(state.leader_pos, action)
-            leader_wood, _ = self.get_cell_rewards(new_leader_pos)
+            leader_wood, fruits = self.get_cell_rewards(new_leader_pos)
 
             new_state = GameState(
                 leader_pos=new_leader_pos,
@@ -214,7 +214,7 @@ class ForestCollectionMDP:
                 leader_steps_left=state.leader_steps_left - 1,
                 follower_steps_left=state.follower_steps_left,
                 leader_total_wood=state.leader_total_wood + leader_wood,
-                follower_total_fruit=state.follower_total_fruit,
+                follower_total_fruit=state.follower_total_fruit + fruits,
                 turn=False  # Switch to follower's turn
             )
 
@@ -233,14 +233,14 @@ class ForestCollectionMDP:
                 )
 
             new_follower_pos = self.apply_action(state.follower_pos, action)
-            _, follower_fruit = self.get_cell_rewards(new_follower_pos)
+            woods, follower_fruit = self.get_cell_rewards(new_follower_pos)
 
             new_state = GameState(
                 leader_pos=state.leader_pos,
                 follower_pos=new_follower_pos,
                 leader_steps_left=state.leader_steps_left,
                 follower_steps_left=state.follower_steps_left - 1,
-                leader_total_wood=state.leader_total_wood,
+                leader_total_wood=state.leader_total_wood + woods,
                 follower_total_fruit=state.follower_total_fruit + follower_fruit,
                 turn=True  # Switch to leader's turn
             )
