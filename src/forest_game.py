@@ -247,33 +247,6 @@ class ForestCollectionMDP:
 
         return new_state
 
-    def transition_simultaneous(self, state: GameState,
-                                leader_action: Action,
-                                follower_action: Action) -> GameState:
-        if state.is_terminal():
-            return state
-
-        # Apply actions simultaneously
-        new_leader_pos = self.apply_action(state.leader_pos, leader_action)
-        new_follower_pos = self.apply_action(state.follower_pos, follower_action)
-
-        # Collect resources
-        leader_wood, _ = self.get_cell_rewards(new_leader_pos)
-        _, follower_fruit = self.get_cell_rewards(new_follower_pos)
-
-        # Update state
-        new_state = GameState(
-            leader_pos=new_leader_pos,
-            follower_pos=new_follower_pos,
-            leader_steps_left=state.leader_steps_left - 1,
-            follower_steps_left=state.follower_steps_left - 1,
-            leader_total_wood=state.leader_total_wood + leader_wood,
-            follower_total_fruit=state.follower_total_fruit + follower_fruit,
-            turn=state.turn  # Maintain turn state
-        )
-
-        return new_state
-
     def get_leader_reward(self, state: GameState) -> float:
         """Leader's reward is total wood collected"""
         return float(state.leader_total_wood)
@@ -289,18 +262,6 @@ class ForestCollectionMDP:
 
         current_pos = state.get_current_player_pos()
         return self.get_valid_actions(current_pos)
-
-    def who_moves_next(self, state: GameState) -> Optional[str]:
-        """Determine who moves next given current state"""
-        if state.is_terminal():
-            return None
-
-        if state.turn is True:
-            return "leader"
-        elif state.turn is False:
-            return "follower"
-        else:
-            return "simultaneous"
 
     def create_conflict_forest(self) -> np.ndarray:
         """Create a forest map with strategic conflict between resources"""

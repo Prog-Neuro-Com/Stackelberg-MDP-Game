@@ -354,6 +354,7 @@ class ForestEPFSolver:
 
         return node
 
+
     def _compute_epfs(self, node: GameNode):
         """Compute EPFs using backward induction (Phase 1)"""
         # Post-order traversal - compute children first
@@ -369,6 +370,7 @@ class ForestEPFSolver:
         else:  # Follower node
             # Apply incentive compatibility constraints
             node.epf = self._compute_follower_epf(node)
+
 
     def _compute_leader_epf(self, node: GameNode) -> EPF:
         """Compute EPF at leader node - upper concave envelope of children EPFs"""
@@ -390,14 +392,13 @@ class ForestEPFSolver:
         combined_epf = EPF(all_points)
         return combined_epf.upper_concave_envelope()
 
+
     def _compute_follower_epf(self, node: GameNode) -> EPF:
         """Compute EPF at follower node with left truncation"""
         if not node.children:
             return EPF()
 
-
         children_epfs = list(node.children.values())
-
 
         # Find the maximum of the minimum follower payoffs across all children
         # This is the truncation threshold for incentive compatibility
